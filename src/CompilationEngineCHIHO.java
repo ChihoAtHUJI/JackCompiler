@@ -76,16 +76,33 @@ public class CompilationEngineCHIHO {
     // complies a complete method, function, or constructor.
     public void compileSubroutine() throws IOException {
         symbolTable.startSubroutine();
-        writeNext(); // constructor
-        writeNext(); // ClassName or what to return
-        writeNext(); // new or funcName
+        String funcKind, funcName;
+        funcKind = getValueAndNext();
+        writeNext();
+        funcName = getValueAndNext();
+        if (funcKind.contains("method"))
+            symbolTable.define("this", className,"argument");
+
         writeNext(); // (
         compileParameterList();
-        writeNext(); //)
-//        fileWriter.println(whiteSpace + "<subroutineBody>");
+        writeNext(); // )
         writeNext(); // {
         while (isVar())
             compileVarDec();
+
+        String funcCall = className + "." + funcName;
+        int numLoc = symbolTable.varCount("var");
+        vmWriter.writeFunction(funcCall, numLoc);
+
+        if (funcKind.equals("constructor")){
+            int numFields = symbolTable.varCount("field");
+            vmWriter.writePush("CONST", numFields);
+            vmWriter.writeCall("Memory.alloc", 1);
+            vmWriter.writePop("POINTER", 0);
+        }else if (funcKind.equals("method")){
+            vmWriter.writePush("ARG", 0);
+            vmWriter.writePop("POINTER", 0);
+        }
         compileStatements();
         writeNext(); // }
     }
